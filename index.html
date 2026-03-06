@@ -353,8 +353,12 @@ const CG = {
         await this.sdk.init();
         this.ready = true;
         console.log('[CrazyGames] SDK ready');
-        // Loading is done — game assets are all inline so load is instant
         this.sdk.game.loadingStop();
+        // ── Mute/unmute via CrazyGames SDK ──
+        this.sdk.game.addMuteListener((muted)=>{
+          SFX.setMuted(muted);
+          console.log('[CrazyGames] mute:', muted);
+        });
       }
     } catch(e){ console.warn('[CrazyGames] SDK init failed', e); }
   },
@@ -370,18 +374,193 @@ const CG = {
   async showAd(type='midgame'){
     if(!this.ready) return;
     try{
-      // Pause game audio/loop before ad
       this.gameplayStop();
+      SFX.setMuted(true); // silence during ad
       await this.sdk.ad.requestAd(type, {
-        adStarted:  ()=>{ /* game already paused */ },
-        adFinished: ()=>{ this.gameplayStart(); },
-        adError:    ()=>{ this.gameplayStart(); },
+        adStarted:  ()=>{},
+        adFinished: ()=>{ SFX.setMuted(false); this.gameplayStart(); },
+        adError:    ()=>{ SFX.setMuted(false); this.gameplayStart(); },
       });
-    } catch(e){ this.gameplayStart(); }
+    } catch(e){ SFX.setMuted(false); this.gameplayStart(); }
   }
 };
-// Init SDK as early as possible
 CG.init();
+
+// ─────────────────────────────────────────────
+//  AUDIO ENGINE (Web Audio API)
+// ─────────────────────────────────────────────
+const SFX = {
+  ctx: null,
+  muted: false,
+  masterGain: null,
+  engineNode: null,
+  engineGain: null,
+
+  init(){
+    try{
+      this.ctx = new (window.AudioContext||window.webkitAudioContext)();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = 0.5;
+      this.masterGain.connect(this.ctx.destination);
+    } catch(e){ console.warn('Web Audio not supported'); }
+  },
+
+  setMuted(m){
+    this.muted = m;
+    if(this.masterGain) this.masterGain.gain.value = m ? 0 : 0.5;
+  },
+
+  _resume(){
+    if(this.ctx && this.ctx.state==='suspended') this.ctx.resume();
+  },
+
+  // Short one-shot tone
+  _tone(freq, type, duration, vol, startTime){
+    if(!this.ctx||this.muted) return;
+    this._resume();
+    const t = startTime || this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g   = this.ctx.createGain();
+    osc.type = type||'square';
+    osc.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(vol||0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+duration);
+    osc.connect(g); g.connect(this.masterGain);
+    osc.start(t); osc.stop(t+duration);
+  },
+
+  // Continuous engine sound (oscillator looping)
+  startEngine(){
+    if(!this.ctx||this.engineNode) return;
+    this._resume();
+    this.engineNode = this.ctx.createOscillator();
+    this.engineGain = this.ctx.createGain();
+    this.engineNode.type = 'sawtooth';
+    this.engineNode.frequency.value = 80;
+    this.engineGain.gain.value = 0;
+    this.engineNode.connect(this.engineGain);
+    this.engineGain.connect(this.masterGain);
+    this.engineNode.start();
+  },
+
+  updateEngine(speed, maxSpeed){
+    if(!this.engineNode||this.muted) return;
+    const ratio = Math.abs(speed)/maxSpeed;
+    const freq  = 80 + ratio * 340;
+    const vol   = 0.04 + ratio * 0.10;
+    const t     = this.ctx.currentTime;
+    this.engineNode.frequency.setTargetAtTime(freq, t, 0.08);
+    this.engineGain.gain.setTargetAtTime(vol, t, 0.08);
+  },
+
+  stopEngine(){
+    if(!this.engineNode) return;
+    try{ this.engineNode.stop(); } catch(e){}
+    this.engineNode = null; this.engineGain = null;
+  },
+
+  // ── One-shot sound effects ──
+  shoot(){
+    if(!this.ctx||this.muted) return;
+    this._resume();
+    // Rapid fire click
+    for(let i=0;i<3;i++) this._tone(900-i*80,'square',0.06,0.12, this.ctx.currentTime+i*0.08);
+  },
+
+  explosion(){
+    if(!this.ctx||this.muted) return;
+    this._resume();
+    // Noise burst for explosion
+    const bufSize=this.ctx.sampleRate*0.35;
+    const buf=this.ctx.createBuffer(1,bufSize,this.ctx.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1);
+    const src=this.ctx.createBufferSource();
+    src.buffer=buf;
+    const g=this.ctx.createGain();
+    const filter=this.ctx.createBiquadFilter();
+    filter.type='lowpass'; filter.frequency.value=400;
+    g.gain.setValueAtTime(0.5,this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,this.ctx.currentTime+0.35);
+    src.connect(filter); filter.connect(g); g.connect(this.masterGain);
+    src.start(); src.stop(this.ctx.currentTime+0.35);
+  },
+
+  nuke(){
+    if(!this.ctx||this.muted) return;
+    this._resume();
+    // Deep boom
+    const bufSize=this.ctx.sampleRate*0.9;
+    const buf=this.ctx.createBuffer(1,bufSize,this.ctx.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1)*(1-i/bufSize);
+    const src=this.ctx.createBufferSource();
+    src.buffer=buf;
+    const g=this.ctx.createGain();
+    const filter=this.ctx.createBiquadFilter();
+    filter.type='lowpass'; filter.frequency.value=180;
+    g.gain.setValueAtTime(0.8,this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,this.ctx.currentTime+0.9);
+    src.connect(filter); filter.connect(g); g.connect(this.masterGain);
+    src.start();
+    // Sub tone
+    this._tone(40,'sine',1.0,0.4);
+  },
+
+  pickup(){
+    // Ascending chime
+    if(!this.ctx||this.muted) return;
+    this._resume();
+    [523,659,784,1047].forEach((f,i)=>this._tone(f,'sine',0.12,0.15,this.ctx.currentTime+i*0.07));
+  },
+
+  hit(){
+    if(!this.ctx||this.muted) return;
+    this._tone(160,'sawtooth',0.08,0.25);
+  },
+
+  boost(){
+    if(!this.ctx||this.muted) return;
+    this._resume();
+    const t=this.ctx.currentTime;
+    const osc=this.ctx.createOscillator();
+    const g=this.ctx.createGain();
+    osc.type='sine';
+    osc.frequency.setValueAtTime(400,t);
+    osc.frequency.linearRampToValueAtTime(1200,t+0.25);
+    g.gain.setValueAtTime(0.2,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
+    osc.connect(g); g.connect(this.masterGain);
+    osc.start(t); osc.stop(t+0.25);
+  },
+
+  countdownBeep(final){
+    if(!this.ctx||this.muted) return;
+    this._tone(final?880:440,'sine',final?0.35:0.15, final?0.3:0.18);
+  },
+
+  victory(){
+    if(!this.ctx||this.muted) return;
+    this._resume();
+    const melody=[523,659,784,1047,784,1047,1319];
+    melody.forEach((f,i)=>this._tone(f,'sine',0.18,0.22,this.ctx.currentTime+i*0.14));
+  },
+
+  defeat(){
+    if(!this.ctx||this.muted) return;
+    this._resume();
+    [440,392,349,294].forEach((f,i)=>this._tone(f,'sine',0.22,0.2,this.ctx.currentTime+i*0.18));
+  },
+
+  mine(){
+    if(!this.ctx||this.muted) return;
+    this._tone(220,'square',0.05,0.15);
+  }
+};
+// Init audio on first user interaction
+['click','touchstart','keydown'].forEach(ev=>{
+  window.addEventListener(ev,()=>{ if(!SFX.ctx) SFX.init(); SFX.ctx&&SFX.ctx.state==='suspended'&&SFX.ctx.resume(); },{once:true,passive:true});
+});
 
 // ─────────────────────────────────────────────
 //  CONFIG
@@ -963,7 +1142,7 @@ function spawnExplosion(pos,color,radius){
 }
 
 // Giant NUKE mushroom cloud effect
-function spawnNukeEffect(pos){
+function spawnNukeEffect(pos){ SFX.nuke();
   // Massive white flash
   const fl2=new THREE.PointLight(0xFFFFFF,25,80);
   fl2.position.copy(pos); fl2.position.y+=2; scene.add(fl2);
@@ -1730,13 +1909,14 @@ function updatePlayer(dt){
   }
 
   moveKart(player,accel,steer,player.boostTimer>0);
+  SFX.updateEngine(player.speed, 0.55);
 
   // Pickup collision
   pickups.forEach((p,i)=>{
     if(!p.alive) return;
     if(player.mesh.position.distanceTo(p.mesh.position)<2.4){
       player.weapon=p.wd;p.alive=false;p.mesh.visible=false;
-      pkFlashFx(p.wd.col);refreshHUD();respawnPU(i);
+      pkFlashFx(p.wd.col);refreshHUD();respawnPU(i); SFX.pickup();
     }
   });
 
@@ -1744,6 +1924,7 @@ function updatePlayer(dt){
   [[-55,0,-55],[55,0,-55],[-55,0,55],[55,0,55],[0,0,-78],[0,0,78],[-78,0,0],[78,0,0],[-78,0,-55],[78,0,55],[-55,0,78],[55,0,-78]].forEach(([px,,pz])=>{
     if(Math.abs(player.x-px)<3&&Math.abs(player.z-pz)<3&&player.boostTimer<=0){
       player.boostTimer=45;
+      SFX.boost();
       spawnParts(player.mesh.position.clone(),selMap.acc,8,4);
     }
   });
@@ -2295,12 +2476,14 @@ function _doStartGame(){
   cdEl.style.display='flex';
   function tick(){
     cdEl.innerHTML='<div class="cdnum">'+(n>0?n:'GO!')+'</div>';
+    SFX.countdownBeep(n===0);
     if(n>0){n--;setTimeout(tick,1000);}
     else setTimeout(()=>{
       cdEl.style.display='none';
       gameState='playing';
       startTimer();
-      CG.gameplayStart(); // ← game is now live
+      CG.gameplayStart();
+      SFX.startEngine();
     },800);
   }
   tick();
@@ -2308,7 +2491,8 @@ function _doStartGame(){
 window.startGame=startGame;
 
 function endGame(){
-  CG.gameplayStop(); // match over — entering results screen
+  CG.gameplayStop();
+  SFX.stopEngine();
   gameState='gameover'; clearInterval(timerInt);
   document.getElementById('hud').classList.add('off');
   document.getElementById('mctrl').style.display='none';
