@@ -191,7 +191,7 @@ MIT — free to use, modify and distribute.
 
 <div align="center">
 
-Built with ❤️ using [Three.js](https://threejs.org/)
+Built by AKHIL KANDRAKOTI [Three.js](https://threejs.org/)
 
 **[🎮 Play Turbo Smash 3D](https://turbo-smash-3d.vercel.app)**
 
