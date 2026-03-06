@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>TURBO SMASH 3D</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Russo+One&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap');
@@ -121,14 +124,18 @@ canvas{display:block;width:100vw;height:100vh;pointer-events:none;}
   animation:fdmgA 1s ease forwards;}
 @keyframes fdmgA{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-75px) scale(.6);}}
 
-/* MOBILE CONTROLS */
-#mctrl{position:fixed;bottom:0;left:0;right:0;
-  height:clamp(130px,22vw,170px);
-  display:flex;align-items:center;
-  justify-content:space-between;
-  padding:0 clamp(14px,4vw,28px) clamp(12px,3vw,20px);
-  padding-bottom:calc(clamp(12px,3vw,20px) + env(safe-area-inset-bottom,0px));
-  z-index:25;pointer-events:none;}
+/* ── MOBILE CONTROLS ── */
+#mctrl{
+  position:fixed;bottom:0;left:0;right:0;
+  height:clamp(130px,20vh,160px);
+  display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 clamp(10px,3vw,22px) calc(clamp(10px,2vh,16px) + env(safe-area-inset-bottom,0px));
+  z-index:25;pointer-events:none;
+}
+
+
+
+/* Joystick */
 #joy{
   width:clamp(110px,20vw,140px);
   height:clamp(110px,20vw,140px);
@@ -144,25 +151,36 @@ canvas{display:block;width:100vw;height:100vh;pointer-events:none;}
   background:radial-gradient(circle,rgba(255,255,255,.95),rgba(255,214,0,.8));
   box-shadow:0 0 16px var(--Y),0 2px 8px rgba(0,0,0,.5);
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+
+/* ── RIGHT SIDE: ACTION BUTTONS ── */
 .rbtns{display:flex;flex-direction:column;gap:clamp(8px,2vw,14px);pointer-events:all;}
 .rbtn{
-  width:clamp(58px,11vw,76px);
-  height:clamp(58px,11vw,76px);
+  width:clamp(58px,10vw,74px);
+  height:clamp(58px,10vw,74px);
   border-radius:50%;border:3px solid;
   display:flex;align-items:center;justify-content:center;
-  font-size:clamp(22px,5vw,30px);
+  font-size:clamp(20px,4vw,28px);
   background:rgba(0,0,0,.6);cursor:pointer;
   touch-action:none;user-select:none;
   -webkit-tap-highlight-color:transparent;
-  transition:transform .1s, box-shadow .1s;}
+  transition:transform .08s,box-shadow .08s;
+}
 .rbtn:active{transform:scale(.84);}
 #bfire{
   border-color:var(--P);
   box-shadow:0 0 20px rgba(255,31,106,.5);
-  width:clamp(64px,13vw,84px);
-  height:clamp(64px,13vw,84px);
-  font-size:clamp(24px,6vw,32px);}
+  width:clamp(66px,12vw,82px);
+  height:clamp(66px,12vw,82px);
+  font-size:clamp(22px,5vw,30px);
+}
 #bboost{border-color:var(--C);box-shadow:0 0 16px rgba(0,238,255,.4);}
+
+/* Landscape phone: shrink slightly */
+@media(max-height:420px){
+  #mctrl{height:clamp(110px,28vh,138px);}
+  .rbtn{width:clamp(52px,11vh,66px);height:clamp(52px,11vh,66px);}
+  #bfire{width:clamp(58px,13vh,72px);height:clamp(58px,13vh,72px);}
+}
 
 /* Countdown */
 #cd{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:60;pointer-events:none;}
@@ -209,8 +227,16 @@ canvas{display:block;width:100vw;height:100vh;pointer-events:none;}
   .hud-top{padding:8px 10px 20px;}
 }
 /* Ensure HUD elements clear the mobile controls */
-#spd,#mm{bottom:clamp(148px,25vw,185px);}
-#boostbar{bottom:clamp(151px,25vw,188px);}
+#spd,#mm{bottom:clamp(140px,22vh,185px);}
+#boostbar{bottom:clamp(143px,22vh,188px);}
+/* Landscape phone: tuck HUD tighter */
+@media(max-height:420px){
+  #spd{bottom:145px;right:10px;padding:6px 10px;}
+  #mm{bottom:145px;left:10px;width:80px;height:80px;}
+  #boostbar{bottom:148px;width:120px;}
+  .hud-top{padding:6px 10px 16px;}
+  .htimer{font-size:18px;}
+}
 
 
 /* TIME SELECTOR */
@@ -224,9 +250,19 @@ canvas{display:block;width:100vw;height:100vh;pointer-events:none;}
 .time-card.sel .time-lbl{color:var(--C);}
 
 </style>
+  <!-- CrazyGames SDK v3 -->
+  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 </head>
 <body>
 <canvas id="cvs"></canvas>
+
+<!-- Portrait rotate nudge — only shown when phone held vertically -->
+<div id="rotateNudge" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.93);flex-direction:column;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;color:#fff;text-align:center;gap:20px;pointer-events:all;">
+  <div style="font-size:62px;animation:rSpin 1.4s ease-in-out infinite alternate;">📱</div>
+  <div style="font-size:15px;letter-spacing:4px;color:#FFD600;">ROTATE YOUR PHONE</div>
+  <div style="font-size:10px;color:#555;letter-spacing:2px;margin-top:-8px;">LANDSCAPE MODE RECOMMENDED</div>
+</div>
+<style>@keyframes rSpin{from{transform:rotate(0deg);}to{transform:rotate(90deg);}}</style>
 
 <!-- TITLE -->
 <div class="screen" id="titleScreen">
@@ -304,6 +340,49 @@ canvas{display:block;width:100vw;height:100vh;pointer-events:none;}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// ─────────────────────────────────────────────
+//  CRAZYGAMES SDK
+// ─────────────────────────────────────────────
+const CG = {
+  sdk: null,
+  ready: false,
+  async init(){
+    try {
+      if(window.CrazyGames && window.CrazyGames.SDK){
+        this.sdk = window.CrazyGames.SDK;
+        await this.sdk.init();
+        this.ready = true;
+        console.log('[CrazyGames] SDK ready');
+        // Loading is done — game assets are all inline so load is instant
+        this.sdk.game.loadingStop();
+      }
+    } catch(e){ console.warn('[CrazyGames] SDK init failed', e); }
+  },
+  gameplayStart(){
+    if(this.ready) try{ this.sdk.game.gameplayStart(); }catch(e){}
+  },
+  gameplayStop(){
+    if(this.ready) try{ this.sdk.game.gameplayStop(); }catch(e){}
+  },
+  happytime(){
+    if(this.ready) try{ this.sdk.game.happytime(); }catch(e){}
+  },
+  async showAd(type='midgame'){
+    if(!this.ready) return;
+    try{
+      // Pause game audio/loop before ad
+      this.gameplayStop();
+      await this.sdk.ad.requestAd(type, {
+        adStarted:  ()=>{ /* game already paused */ },
+        adFinished: ()=>{ this.gameplayStart(); },
+        adError:    ()=>{ this.gameplayStart(); },
+      });
+    } catch(e){ this.gameplayStart(); }
+  }
+};
+// Init SDK as early as possible
+CG.init();
+
 // ─────────────────────────────────────────────
 //  CONFIG
 // ─────────────────────────────────────────────
@@ -2156,13 +2235,22 @@ function startTimer(){
 let gameState='title', animId=null, lastT=0;
 
 function startGame(){
+  // Show a midgame ad between sessions (not on very first load)
+  if(typeof startGame._played!=='undefined'){
+    CG.showAd('midgame').then(()=>_doStartGame());
+    return;
+  }
+  startGame._played=true;
+  _doStartGame();
+}
+function _doStartGame(){
   if(animId){cancelAnimationFrame(animId);animId=null;}
   clearInterval(timerInt);
   document.querySelectorAll('.bhp').forEach(e=>e.remove());
 
   document.getElementById('titleScreen').classList.add('off');
   document.getElementById('hud').classList.remove('off');
-  document.getElementById('mctrl').style.display='flex';
+  if('ontouchstart' in window||navigator.maxTouchPoints>0) document.getElementById('mctrl').style.display='flex';
   document.getElementById('goscreen').classList.add('off');
   document.getElementById('tim').classList.remove('warn');
   const tm=curTime===0?'∞':Math.floor(curTime/60)+':'+(curTime%60<10?'0':'')+curTime%60;
@@ -2212,6 +2300,7 @@ function startGame(){
       cdEl.style.display='none';
       gameState='playing';
       startTimer();
+      CG.gameplayStart(); // ← game is now live
     },800);
   }
   tick();
@@ -2219,6 +2308,7 @@ function startGame(){
 window.startGame=startGame;
 
 function endGame(){
+  CG.gameplayStop(); // match over — entering results screen
   gameState='gameover'; clearInterval(timerInt);
   document.getElementById('hud').classList.add('off');
   document.getElementById('mctrl').style.display='none';
@@ -2260,7 +2350,7 @@ function loop(t){
 }
 
 // ─────────────────────────────────────────────
-//  JOYSTICK — improved mobile feel
+//  JOYSTICK — kept intact (hidden, legacy)
 // ─────────────────────────────────────────────
 const joy=document.getElementById('joy');
 const jknob=document.getElementById('jknob');
@@ -2296,6 +2386,8 @@ joy.addEventListener('touchend',e=>{
   }
 });
 
+
+
 document.getElementById('bfire').addEventListener('touchstart',e=>{e.preventDefault();doFire();},{passive:false});
 document.getElementById('bboost').addEventListener('touchstart',e=>{e.preventDefault();doBoost();},{passive:false});
 // Also handle click for desktop testing
@@ -2305,6 +2397,18 @@ document.getElementById('bboost').addEventListener('click',doBoost);
 // ─────────────────────────────────────────────
 //  BOOT
 // ─────────────────────────────────────────────
+// Rotate nudge for portrait phones
+function checkOrientation(){
+  const nudge=document.getElementById('rotateNudge');
+  if(!nudge) return;
+  const isMobile=('ontouchstart' in window)&&Math.min(screen.width,screen.height)<=500;
+  const isPortrait=window.innerHeight>window.innerWidth*1.1;
+  nudge.style.display=(isMobile&&isPortrait)?'flex':'none';
+}
+window.addEventListener('resize',checkOrientation);
+window.addEventListener('orientationchange',()=>setTimeout(checkOrientation,200));
+checkOrientation();
+
 lastT=performance.now();
 animId=requestAnimationFrame(loop);
 </script>
