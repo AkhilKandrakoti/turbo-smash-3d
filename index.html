@@ -591,7 +591,7 @@ const MAPS = [
    bg:'linear-gradient(160deg,#c2873a,#8B5E1A)'},
   {id:'city',name:'NIGHT CITY',sub:'NEON & RAIN',emoji:'🌆',
    sky:0x010118,fog:0x050530,fogD:0.016,ground:0x111128,rough:0.2,
-   wall:0x1a1a3e,acc:0x00EEFF,amb:0.25,sun:0x4466FF,sunI:0.5,
+   wall:0x1a1a3e,acc:0x00EEFF,amb:0.7,sun:0x6688FF,sunI:1.1,
    obsCols:[0x1a1a3e,0x2d2d6e],weather:'rain',
    bg:'linear-gradient(160deg,#010118,#1a1a40)'},
   {id:'jungle',name:'JUNGLE RUSH',sub:'WILD TERRAIN',emoji:'🌴',
@@ -606,7 +606,7 @@ const MAPS = [
    bg:'linear-gradient(160deg,#9ab8cc,#c8dde8)'},
   {id:'volcano',name:'VOLCANO CORE',sub:'LAVA & FIRE',emoji:'🌋',
    sky:0x1a0400,fog:0x2d0800,fogD:0.019,ground:0x1a0800,rough:1.0,
-   wall:0x3d1100,acc:0xFF4400,amb:0.35,sun:0xFF6600,sunI:1.6,
+   wall:0x3d1100,acc:0xFF4400,amb:0.75,sun:0xFF7700,sunI:1.8,
    obsCols:[0x3d1100,0x5a1a00],weather:'embers',
    bg:'linear-gradient(160deg,#1a0400,#3d1100)'},
 ];
@@ -617,15 +617,14 @@ let selMap = MAPS[0];
 // ─────────────────────────────────────────────
 const cvs = document.getElementById('cvs');
 const renderer = new THREE.WebGLRenderer({canvas:cvs, antialias:true, powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+const _isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+renderer.setPixelRatio(_isMobile ? 1 : Math.min(window.devicePixelRatio,1.5));
 renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.shadowMap.enabled = false; // off = no shadow render pass
+// tone mapping off for performance
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,500);
+const camera = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,250);
 camera.position.set(0,6,12);
 
 window.addEventListener('resize',()=>{
@@ -661,7 +660,7 @@ function mat(color,rough=0.55,metal=0.1,emitInt=0,emitCol=null){
 function addBox(parent,w,h,d,material,x=0,y=0,z=0,rx=0,ry=0,rz=0){
   const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
   mesh.position.set(x,y,z);mesh.rotation.set(rx,ry,rz);
-  mesh.castShadow=true;mesh.receiveShadow=true;
+  mesh.castShadow=false;mesh.receiveShadow=false;
   parent.add(mesh);return mesh;
 }
 function addCyl(parent,rt,rb,h,segs,material,x=0,y=0,z=0,rx=0,ry=0,rz=0){
@@ -709,7 +708,7 @@ function buildCar(color){
   const hoodGeo = new THREE.BoxGeometry(1.9,0.1,1.3);
   const hood = new THREE.Mesh(hoodGeo, body);
   hood.position.set(0, 0.64, 1.25); hood.rotation.x = -0.13;
-  hood.castShadow=true; root.add(hood);
+  hood.castShadow=false; root.add(hood);
   // Hood vents
   addBox(root, 0.25, 0.04, 0.35, dark, -0.45, 0.72, 1.0);
   addBox(root, 0.25, 0.04, 0.35, dark,  0.45, 0.72, 1.0);
@@ -733,7 +732,7 @@ function buildCar(color){
   // ── REAR DECK / TRUNK
   const trunkGeo = new THREE.BoxGeometry(1.9,0.1,1.1);
   const trunk = new THREE.Mesh(trunkGeo, body);
-  trunk.position.set(0,0.72,-1.22); trunk.rotation.x=0.08; trunk.castShadow=true; root.add(trunk);
+  trunk.position.set(0,0.72,-1.22); trunk.rotation.x=0.08; trunk.castShadow=false; root.add(trunk);
 
   // ── REAR BUMPER
   addBox(root, 1.95, 0.32, 0.2, bump,  0, 0.28, -2.0);
@@ -846,7 +845,7 @@ function buildCar(color){
   addBox(root, 2.4,0.06,0.06, dark, 0,0.3, 1.2);
   addBox(root, 2.4,0.06,0.06, dark, 0,0.3,-1.3);
 
-  root.castShadow = true;
+  root.castShadow=false;
   // Car faces +Z so forward motion adds to Z
   return {root, wheels};
 }
@@ -873,7 +872,7 @@ function buildArena(M){
     new THREE.PlaneGeometry(ARENA,ARENA,32,32),
     new THREE.MeshStandardMaterial({color:M.ground,roughness:M.rough,metalness:M.id==='city'?0.25:0})
   );
-  gnd.rotation.x=-Math.PI/2; gnd.receiveShadow=true;
+  gnd.rotation.x=-Math.PI/2; gnd.receiveShadow=false;
   scene.add(gnd); arenaObjs.push(gnd);
 
   // Grid lines
@@ -892,7 +891,7 @@ function buildArena(M){
   const A=ARENA/2;
   [[ARENA,5,3,0,2.5,-(A+1.5)],[ARENA,5,3,0,2.5,A+1.5],[3,5,ARENA,-(A+1.5),2.5,0],[3,5,ARENA,A+1.5,2.5,0]].forEach(([w,h,d,x,y,z])=>{
     const wm=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),wallMat);
-    wm.position.set(x,y,z);wm.castShadow=true;wm.receiveShadow=true;
+    wm.position.set(x,y,z);wm.castShadow=false;wm.receiveShadow=false;
     scene.add(wm);arenaObjs.push(wm);
     wallBoxes.push({x:x-w/2,z:z-d/2,w,d});
   });
@@ -911,7 +910,7 @@ function buildArena(M){
   // Center block
   const cMat=new THREE.MeshStandardMaterial({color:M.wall,roughness:0.65,metalness:0.2});
   const cb=new THREE.Mesh(new THREE.BoxGeometry(28,5.5,28),cMat);
-  cb.position.y=2.75;cb.castShadow=true;cb.receiveShadow=true;
+  cb.position.y=2.75;cb.castShadow=false;cb.receiveShadow=false;
   scene.add(cb);arenaObjs.push(cb);
   wallBoxes.push({x:-14,z:-14,w:28,d:28});
   // Center accent ring
@@ -935,7 +934,7 @@ function buildArena(M){
     const oh=4+Math.random()*5, ow=3.5+Math.random()*3, od=3.5+Math.random()*3;
     const om=new THREE.Mesh(new THREE.BoxGeometry(ow,oh,od),
       new THREE.MeshStandardMaterial({color:oc,roughness:0.8,metalness:0.1,emissive:new THREE.Color(M.acc),emissiveIntensity:0.06}));
-    om.position.set(ox,oh/2,oz);om.castShadow=true;om.receiveShadow=true;
+    om.position.set(ox,oh/2,oz);om.castShadow=false;om.receiveShadow=false;
     scene.add(om);arenaObjs.push(om);
     wallBoxes.push({x:ox-ow/2,z:oz-od/2,w:ow,d:od});
 
@@ -977,8 +976,6 @@ function buildArena(M){
       const lava=new THREE.Mesh(new THREE.BoxGeometry(ow*0.3,0.18,od*0.8),
         new THREE.MeshStandardMaterial({color:0xFF4400,emissive:new THREE.Color(0xFF2200),emissiveIntensity:2.5}));
       lava.position.set(ox,oh*0.4,oz);scene.add(lava);arenaObjs.push(lava);
-      const lpl=new THREE.PointLight(0xFF4400,3,12);lpl.position.set(ox,oh*0.4,oz);
-      scene.add(lpl);arenaObjs.push(lpl);
     }
   });
 
@@ -993,26 +990,27 @@ function buildArena(M){
   // Lighting
   scene.add(new THREE.AmbientLight(0xffffff,M.amb));
   const sun=new THREE.DirectionalLight(M.sun,M.sunI);
-  sun.position.set(30,50,20);sun.castShadow=true;
-  sun.shadow.mapSize.width=sun.shadow.mapSize.height=2048;
-  sun.shadow.camera.near=0.5;sun.shadow.camera.far=380;
-  sun.shadow.camera.left=sun.shadow.camera.bottom=-130;
-  sun.shadow.camera.right=sun.shadow.camera.top=130;
+  sun.position.set(30,50,20);sun.castShadow=false;
   scene.add(sun);arenaObjs.push(sun);
 
-  // Accent lights
-  [[M.acc,-50,8,-50],[0xFF1F6A,50,8,50],[0xFFD600,0,10,65],[M.acc,50,8,-50],[0xFF1F6A,-50,8,50]].forEach(([col,lx,ly,lz])=>{
-    const pl=new THREE.PointLight(col,2,55);pl.position.set(lx,ly,lz);
-    scene.add(pl);arenaObjs.push(pl);
-  });
+  // Fill lights for dark maps — ensures karts visible from all angles
+  if(M.id==='city'){
+    const fill=new THREE.DirectionalLight(0x8844FF,0.9);
+    fill.position.set(-40,30,-20);
+    scene.add(fill);arenaObjs.push(fill);
+    const fill2=new THREE.DirectionalLight(0xFF1F6A,0.5);
+    fill2.position.set(0,10,50);
+    scene.add(fill2);arenaObjs.push(fill2);
+  }
+  if(M.id==='volcano'){
+    const fill=new THREE.DirectionalLight(0xFF4400,0.8);
+    fill.position.set(-30,20,-40);
+    scene.add(fill);arenaObjs.push(fill);
+  }
 
   // Snow: fog lights + blizzard point lights
   if(M.id==='snowpeak'){
-    for(let i=0;i<4;i++){
-      const pl=new THREE.PointLight(0x88DDFF,2.5,40);
-      pl.position.set((i<2?-1:1)*55,10,(i%2===0?-1:1)*55);
-      scene.add(pl);arenaObjs.push(pl);
-    }
+
     // Snow ground detail: reflective strips
     const iceMat=new THREE.MeshStandardMaterial({color:0xaaddff,roughness:0.05,metalness:0.6,transparent:true,opacity:0.35});
     for(let i=-4;i<=4;i++){
@@ -1032,12 +1030,8 @@ function buildArena(M){
     [[-35,0],[35,0],[0,-35],[0,35],[-60,0],[60,0],[0,-60],[0,60]].forEach(([lx,lz])=>{
       const ls=new THREE.Mesh(new THREE.BoxGeometry(18,0.5,1.8),lavaMat);
       ls.position.set(lx,0.05,lz);scene.add(ls);arenaObjs.push(ls);
-      const lpl=new THREE.PointLight(0xFF4400,4,22);lpl.position.set(lx,1,lz);
-      scene.add(lpl);arenaObjs.push(lpl);
     });
     // Ambient lava glow from below
-    const lavaAmb=new THREE.PointLight(0xFF3300,3,ARENA);lavaAmb.position.set(0,-2,0);
-    scene.add(lavaAmb);arenaObjs.push(lavaAmb);
   }
   if(M.id==='city'){
     const nC=[0xFF1F6A,0x00EEFF,0xFFD600,0x00FF88];
@@ -2245,7 +2239,7 @@ let wxPts=null;
 function initWeather(type){
   if(wxPts){scene.remove(wxPts);wxPts=null;}
   if(type==='none') return;
-  const cnt=2200, pos=new Float32Array(cnt*3);
+  const cnt=800, pos=new Float32Array(cnt*3);
   for(let i=0;i<cnt;i++){
     pos[i*3]=(Math.random()-.5)*ARENA*1.6;
     pos[i*3+1]=Math.random()*28;
@@ -2513,7 +2507,7 @@ function endGame(){
 // ─────────────────────────────────────────────
 function loop(t){
   animId=requestAnimationFrame(loop);
-  const dt=Math.min((t-lastT)/1000,0.05); lastT=t;
+  const dt=Math.min((t-lastT)/1000,0.025); lastT=t;
   const sec=t/1000;
 
   if(gameState==='playing'){
