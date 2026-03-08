@@ -1,107 +1,75 @@
-# 🏎️ Turbo Smash 3D
+# 🏎️ TURBO SMASH 3D
 
 <div align="center">
 
+![Turbo Smash 3D](https://img.shields.io/badge/TURBO-SMASH%203D-FFD600?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI0ZGRDYwMCIgZD0iTTUgMTFMMSAxNWgzdjRoNnYtNGg0djRoNnYtNGgzTDE5IDExSDV6Ii8+PC9zdmc+)
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![Three.js](https://img.shields.io/badge/Three.js-000000?style=for-the-badge&logo=three.js&logoColor=white)
 ![No Dependencies](https://img.shields.io/badge/Dependencies-ZERO-00FF88?style=for-the-badge)
 ![Mobile Ready](https://img.shields.io/badge/Mobile-Ready-00EEFF?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
 ### 🎮 [▶ PLAY NOW — turbo-smash-3d.vercel.app](https://turbo-smash-3d.vercel.app)
 
-*A complete 3D kart battle game — single HTML file, zero installs, runs in any browser on any device.*
+*A fully featured 3D kart battle game — built in a single HTML file, zero installs, runs in your browser.*
 
 </div>
 
 ---
 
-## 📸 Screenshots
+## 📸 Overview
 
-> Desert Dunes · Night City · Volcano Core
-
-![Turbo Smash 3D Gameplay](https://turbo-smash-3d.vercel.app/preview.jpg)
-
----
-
-## 📖 About
-
-**Turbo Smash 3D** is a fully featured browser-based 3D kart battle game built from scratch using [Three.js](https://threejs.org/). The entire game — 3D engine, physics, AI, weapons, sound effects, UI — lives in a single `index.html` with no build step, no backend, and no dependencies beyond Three.js.
-
-Pick an arena, choose your difficulty, pick up weapons, and destroy AI opponents. Runs smoothly on **Windows, macOS, iOS, Android** and every browser.
+**Turbo Smash 3D** is a browser-based 3D kart battle game inspired by Smash Karts, built entirely with [Three.js](https://threejs.org/) in a single self-contained HTML file. Jump into any of 5 themed arenas, choose your difficulty, pick up weapons, and obliterate AI opponents — all without installing anything.
 
 ---
 
 ## ✨ Features
 
-### 🗺️ 5 Themed Arenas
+### 🗺️ 5 Unique Arenas
+| Arena | Theme | Weather |
+|-------|-------|---------|
+| 🏜️ Desert Dunes | Scorching hot sandstone | Sandstorm |
+| 🌆 Night City | Neon-lit cyberpunk streets | Rain |
+| 🌴 Jungle Rush | Dense wild terrain | Clear |
+| ❄️ Snow Peak | Blizzard ice arena | Snowfall |
+| 🌋 Volcano Core | Lava rivers & fire | Rising embers |
 
-| Arena | Atmosphere | Weather |
-|-------|-----------|---------|
-| 🏜️ Desert Dunes | Hot sandstone, golden sky | Sandstorm particles |
-| 🌆 Night City | Neon cyberpunk, rain-slicked streets | Heavy rainfall |
-| 🌴 Jungle Rush | Dense foliage, green haze | Clear |
-| ❄️ Snow Peak | Icy tundra, blizzard conditions | Snowfall drift |
-| 🌋 Volcano Core | Lava rivers, ember glow, fire sky | Rising embers |
+### 💥 5 Weapons with Realistic 3D Models
+| Weapon | Model | Damage Rule |
+|--------|-------|-------------|
+| 🔫 Machine Gun | Brass bullet with lead tip | 3 hits = kill · 2 hits = 70% · 1 hit = 50% |
+| 💣 Triple Bomb | Round fuse bomb with spark | 3 bombs arced — direct hit = instant kill |
+| ☢️ Nuke Missile | White rocket with red fins | Any hit = instant kill + massive AOE |
+| ⚙️ Land Mine | Disc with prongs + warning light | Contact after arming = instant kill |
+| 🛡️ Shield | Cyan energy dome | Blocks all damage for 5 seconds |
 
-### 💥 5 Weapons — Each with a Unique 3D Model
+### 🧠 Smart AI — 3 Difficulty Levels
+- **🟢 Easy** — 5 bots, slow, wide aim, lots of mistakes
+- **🟡 Medium** — 6 bots, smart pathfinding, 72% accuracy
+- **🔴 Hard** — 7 bots, near-perfect aim, always targets you, ruthless
 
-| Weapon | 3D Model | Damage |
-|--------|----------|--------|
-| 🔫 Machine Gun | Brass casing + lead tip | 1 hit = 50hp · 2 hits = 70hp · 3 hits = kill |
-| 💣 Triple Bomb | Fuse sphere + spark glow | 3 arced bombs · direct hit = instant kill |
-| ☢️ Nuke Missile | White rocket + red tail fins | Any hit = instant kill + mushroom cloud AOE |
-| ⚙️ Land Mine | Disc + prongs + pulsing warning light | Arms after 1.5s · contact = instant kill |
-| 🛡️ Shield | Transparent cyan energy dome | Blocks all damage for 5 seconds |
+AI uses **raycasting wall detection** across 5 rays, **flanking pathfinding**, and **staggered replanning** — no more bots driving into walls.
 
-Every pickup shows a **floating 3D name label** and **dual spinning rings** so you always know what you're grabbing.
+### 🚗 Real Physics
+- **Car-to-car collision** with velocity impulse, momentum transfer and yaw deflection
+- **Wall reflection** off surface normals — hit a wall at an angle and slide along it
+- **Scrape sparks** on wall hits · **Impact sparks** on car collisions
+- **Camera shake** on heavy impacts
 
-### 🧠 AI System — 3 Difficulty Levels
+### ⏱️ Flexible Time Limits
+Choose from **1:00 Sprint**, **2:00 Standard**, **3:00 Extended**, **5:00 Marathon**, or **∞ No Limit**
 
-| Level | Bots | Behaviour |
-|-------|------|-----------|
-| 🟢 Easy | 5 | Slow speed, 45% accuracy, makes navigation mistakes |
-| 🟡 Medium | 6 | Smart pathfinding, 72% accuracy, chases the player |
-| 🔴 Hard | 7 | Fast, 94% accuracy, near-perfect aim, always targets you |
-
-AI uses **5-ray raycasting wall detection**, **flanking pathfinding** when blocked, and **staggered replanning timers** so bots never move in sync.
-
-### 🚗 Physics System
-
-- Velocity-based movement with engine thrust blending
-- Car-to-car collision with impulse resolution and momentum transfer
-- Wall surface normal reflection — glancing hits slide along walls
-- Yaw deflection on impact for realistic spin-out
-- Camera shake scaled to impact force
-- Scrape sparks on wall hits · Impact sparks on car collisions
-
-### 🔊 Procedural Audio
-
-All sound effects generated in real time using the **Web Audio API** — zero audio files:
-
-Engine hum that rises with speed · Machine gun burst · Explosion noise · Deep nuke rumble · Pickup chime · Boost sweep · Impact thud · Victory fanfare · Defeat melody · Countdown beeps
-
-### ⏱️ Time Limit Options
-
-**1 min Sprint** · **2 min Standard** · **3 min Extended** · **5 min Marathon** · **∞ No Limit**
-
-### 📱 Full Mobile Support
-
-- Virtual joystick (left thumb) for steering and acceleration
-- Dedicated fire and boost buttons (right thumb)
-- Multi-touch support — joystick + fire simultaneously
-- `viewport-fit=cover` and `safe-area-inset` for notched phones
-- Landscape optimised
+### 📱 Mobile Friendly
+- Virtual joystick (left thumb) + Fire / Boost buttons (right thumb)
+- `safe-area-inset` support for notched phones
+- Touch ID tracking for reliable multi-touch
 
 ---
 
 ## 🎮 Controls
 
-### ⌨️ Desktop
-
-| Input | Action |
-|-------|--------|
+### Desktop
+| Key | Action |
+|-----|--------|
 | `W` / `↑` | Accelerate |
 | `S` / `↓` | Brake / Reverse |
 | `A` / `←` | Steer Left |
@@ -109,41 +77,29 @@ Engine hum that rises with speed · Machine gun burst · Explosion noise · Deep
 | `Space` / `Enter` | Fire Weapon |
 | `Shift` | Boost |
 
-### 📱 Mobile
-
+### Mobile
 | Control | Action |
 |---------|--------|
-| Left joystick | Steer and accelerate |
+| Left joystick | Steer & accelerate |
 | 🔫 Button | Fire weapon |
-| ⚡ Button | Activate boost |
+| ⚡ Button | Boost |
 
 ---
 
-## 🏗️ Tech Stack
+## 🚀 Play & Deploy
 
-| Technology | Purpose |
-|-----------|---------|
-| **Three.js r128** | 3D scene, rendering, lighting, particles |
-| **WebGL** | GPU-accelerated graphics via Three.js |
-| **Web Audio API** | All sound effects, engine audio |
-| **HTML5 Canvas** | Minimap, weapon pickup labels |
-| **Vanilla JS** | Game loop, physics engine, AI, controls |
-| **CSS3** | HUD, animated UI screens, responsive layout |
+### Play Instantly
+👉 **[https://turbo-smash-3d.vercel.app](https://turbo-smash-3d.vercel.app)**
 
-No npm. No build step. No backend. **One file.**
+No install. No login. Just open and play.
 
----
-
-## 🚀 Getting Started
-
-### Play instantly
-👉 [https://turbo-smash-3d.vercel.app](https://turbo-smash-3d.vercel.app)
-
-### Run locally
+### Self-Host in 60 Seconds
 ```bash
+# Clone the repo
 git clone https://github.com/YOUR-USERNAME/turbo-smash-3d.git
-cd turbo-smash-3d
-open index.html   # no server needed
+
+# Open directly in browser — no server needed
+open index.html
 ```
 
 ### Deploy to Vercel
@@ -159,50 +115,48 @@ vercel --prod
 
 ---
 
+## 🏗️ Tech Stack
+
+| Technology | Usage |
+|-----------|-------|
+| **Three.js r128** | 3D rendering, scene, lighting, shadows |
+| **WebGL** | GPU-accelerated graphics via Three.js |
+| **Vanilla JS** | Game loop, physics, AI, controls |
+| **HTML5 Canvas** | Minimap, weapon pickup labels |
+| **CSS3** | HUD, UI screens, animations |
+
+**Zero npm. Zero build step. Zero backend.** One file, ~2200 lines.
+
+---
+
 ## 📁 Project Structure
 
 ```
-index.html     ← Entire game (HTML + CSS + JS, ~2500 lines)
-README.md      ← This file
+index.html          ← The entire game (HTML + CSS + JS in one file)
+README.md           ← You are here
 ```
 
 ---
 
-## ⚡ Performance
+## 🎯 Gameplay Tips
 
-Optimised to run smoothly on every system — Windows, macOS, iOS, Android, and budget laptops:
-
-- Pixel ratio capped (1× on mobile, 1.5× on desktop)
-- Shadows disabled — no shadow render pass
-- `MeshLambertMaterial` used throughout — no PBR lighting overhead
-- All arena point lights removed — `DirectionalLight` only
-- Weather particles capped at 800
-- Camera far plane set to 250 — fog hides everything beyond it
-- DT capped at 25ms — no speed bursts after tab switches or lag spikes
+- 🔵 **Blue glowing pads** on the ground = **boost pads** — drive over them for a speed burst
+- 🌀 **Spinning weapon pickups** show their name — choose wisely before picking up
+- 💨 **Boost** just before firing a nuke for extra range
+- 🛡️ **Shield first** if you're low on HP — then find a weapon
+- 🗺️ Use the **minimap** (bottom-left) to track enemies and pickups
 
 ---
 
-## 🎯 Tips
+## 🙌 Credits
 
-- Blue glowing pads on the ground are **boost pads** — hit them for a speed burst
-- Spinning pickups show their weapon name before you drive over them
-- Grab **Shield** first when low HP, then hunt for a weapon
-- Use the **minimap** bottom-left to track enemies and pickups
-- Boost just before firing a Nuke for maximum range
-
----
-
-## 📜 License
-
-MIT — free to use, modify and distribute.
+Built with ❤️ using [Three.js](https://threejs.org/) — the open source 3D library for the web.
 
 ---
 
 <div align="center">
 
-Built with ❤️ using [Three.js](https://threejs.org/)
-
-**[🎮 Play Turbo Smash 3D](https://turbo-smash-3d.vercel.app)**
+**[🎮 PLAY TURBO SMASH 3D NOW](https://turbo-smash-3d.vercel.app)**
 
 *If you enjoy it, drop a ⭐ on GitHub!*
 
