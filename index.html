@@ -429,82 +429,204 @@ const SFX = {
     osc.start(t); osc.stop(t+duration);
   },
 
-  // Continuous engine sound (oscillator looping)
-  startEngine(){
-    if(!this.ctx||this.engineNode) return;
+  _noiseBuffer(seconds=1){
+    const len=Math.max(1,Math.floor(this.ctx.sampleRate*seconds));
+    const buf=this.ctx.createBuffer(1,len,this.ctx.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<len;i++) data[i]=(Math.random()*2-1);
+    return buf;
+  },
+
+  _noiseBurst(duration, startTime, {
+    volume=0.18,
+    lowpass=800,
+    highpass=20,
+    playbackRate=1
+  }={}){
+    if(!this.ctx||this.muted) return;
     this._resume();
-    this.engineNode = this.ctx.createOscillator();
+    const t=startTime||this.ctx.currentTime;
+    const src=this.ctx.createBufferSource();
+    src.buffer=this._noiseBuffer(duration+0.05);
+    src.playbackRate.setValueAtTime(playbackRate,t);
+
+    const hp=this.ctx.createBiquadFilter();
+    hp.type='highpass';
+    hp.frequency.setValueAtTime(highpass,t);
+
+    const lp=this.ctx.createBiquadFilter();
+    lp.type='lowpass';
+    lp.frequency.setValueAtTime(lowpass,t);
+
+    const g=this.ctx.createGain();
+    g.gain.setValueAtTime(volume,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+duration);
+
+    src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(this.masterGain);
+    src.start(t); src.stop(t+duration);
+  },
+
+  // Continuous engine sound (layered oscillators + filtered noise)
+  startEngine(){
+    if(!this.ctx||this.engineLow) return;
+    this._resume();
+
+    this.engineLow = this.ctx.createOscillator();
+    this.engineMid = this.ctx.createOscillator();
+    this.engineHigh = this.ctx.createOscillator();
+    this.engineFilter = this.ctx.createBiquadFilter();
+    this.engineFilter.type = 'lowpass';
+    this.engineFilter.frequency.value = 900;
+
     this.engineGain = this.ctx.createGain();
-    this.engineNode.type = 'sawtooth';
-    this.engineNode.frequency.value = 80;
     this.engineGain.gain.value = 0;
-    this.engineNode.connect(this.engineGain);
+
+    this.engineLow.type = 'sawtooth';
+    this.engineMid.type = 'triangle';
+    this.engineHigh.type = 'square';
+
+    this.engineLow.frequency.value = 58;
+    this.engineMid.frequency.value = 116;
+    this.engineHigh.frequency.value = 232;
+
+    const lowGain = this.ctx.createGain();
+    const midGain = this.ctx.createGain();
+    const highGain = this.ctx.createGain();
+    lowGain.gain.value = 0.12;
+    midGain.gain.value = 0.05;
+    highGain.gain.value = 0.018;
+
+    this.engineLow.connect(lowGain);
+    this.engineMid.connect(midGain);
+    this.engineHigh.connect(highGain);
+    lowGain.connect(this.engineFilter);
+    midGain.connect(this.engineFilter);
+    highGain.connect(this.engineFilter);
+
+    const noiseSrc = this.ctx.createBufferSource();
+    noiseSrc.buffer = this._noiseBuffer(2);
+    noiseSrc.loop = true;
+    const noiseHP = this.ctx.createBiquadFilter();
+    noiseHP.type = 'highpass';
+    noiseHP.frequency.value = 150;
+    this.engineNoiseGain = this.ctx.createGain();
+    this.engineNoiseGain.gain.value = 0.0015;
+    noiseSrc.connect(noiseHP);
+    noiseHP.connect(this.engineNoiseGain);
+    this.engineNoiseGain.connect(this.engineFilter);
+
+    this.engineFilter.connect(this.engineGain);
     this.engineGain.connect(this.masterGain);
-    this.engineNode.start();
+
+    this.engineLow.start();
+    this.engineMid.start();
+    this.engineHigh.start();
+    noiseSrc.start();
+
+    this.engineNoise = noiseSrc;
+
+    // ignition burst
+    this._tone(72,'sawtooth',0.09,0.12);
+    this._tone(54,'triangle',0.12,0.11,this.ctx.currentTime+0.03);
+    this._noiseBurst(0.08,this.ctx.currentTime,{volume:0.045,lowpass:500,highpass:120});
   },
 
   updateEngine(speed, maxSpeed){
-    if(!this.engineNode||this.muted) return;
-    const ratio = Math.abs(speed)/maxSpeed;
-    const freq  = 80 + ratio * 340;
-    const vol   = 0.04 + ratio * 0.10;
-    const t     = this.ctx.currentTime;
-    this.engineNode.frequency.setTargetAtTime(freq, t, 0.08);
-    this.engineGain.gain.setTargetAtTime(vol, t, 0.08);
+    if(!this.engineLow||this.muted) return;
+    const ratio = Math.min(1, Math.abs(speed)/Math.max(0.001,maxSpeed));
+    const t = this.ctx.currentTime;
+
+    const lowFreq  = 58 + ratio * 78;
+    const midFreq  = 116 + ratio * 172;
+    const highFreq = 232 + ratio * 305;
+    const cutoff   = 700 + ratio * 1800;
+    const volume   = 0.028 + ratio * 0.12;
+    const noiseVol = 0.0015 + ratio * 0.009;
+
+    this.engineLow.frequency.setTargetAtTime(lowFreq, t, 0.07);
+    this.engineMid.frequency.setTargetAtTime(midFreq, t, 0.07);
+    this.engineHigh.frequency.setTargetAtTime(highFreq, t, 0.07);
+    this.engineFilter.frequency.setTargetAtTime(cutoff, t, 0.08);
+    this.engineGain.gain.setTargetAtTime(volume, t, 0.09);
+    if(this.engineNoiseGain) this.engineNoiseGain.gain.setTargetAtTime(noiseVol, t, 0.09);
   },
 
   stopEngine(){
-    if(!this.engineNode) return;
-    try{ this.engineNode.stop(); } catch(e){}
-    this.engineNode = null; this.engineGain = null;
+    ['engineLow','engineMid','engineHigh','engineNoise'].forEach((key)=>{
+      if(this[key]){
+        try{ this[key].stop(); }catch(e){}
+      }
+      this[key]=null;
+    });
+    this.engineGain = null;
+    this.engineFilter = null;
+    this.engineNoiseGain = null;
   },
 
   // ── One-shot sound effects ──
   shoot(){
     if(!this.ctx||this.muted) return;
     this._resume();
-    // Rapid fire click
-    for(let i=0;i<3;i++) this._tone(900-i*80,'square',0.06,0.12, this.ctx.currentTime+i*0.08);
+    const t=this.ctx.currentTime;
+    // muzzle crack
+    this._noiseBurst(0.05,t,{volume:0.16,highpass:850,lowpass:4200,playbackRate:1.15});
+    // mechanical body
+    this._tone(180,'square',0.045,0.05,t);
+    this._tone(120,'triangle',0.055,0.04,t+0.01);
+    // fast tail so it feels punchy
+    this._noiseBurst(0.07,t+0.015,{volume:0.06,highpass:300,lowpass:1600});
   },
 
   explosion(){
     if(!this.ctx||this.muted) return;
     this._resume();
-    // Noise burst for explosion
-    const bufSize=this.ctx.sampleRate*0.35;
-    const buf=this.ctx.createBuffer(1,bufSize,this.ctx.sampleRate);
-    const data=buf.getChannelData(0);
-    for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1);
-    const src=this.ctx.createBufferSource();
-    src.buffer=buf;
+    const t=this.ctx.currentTime;
+    // initial crack
+    this._noiseBurst(0.12,t,{volume:0.32,highpass:120,lowpass:2600});
+    // bass boom
+    const osc=this.ctx.createOscillator();
     const g=this.ctx.createGain();
     const filter=this.ctx.createBiquadFilter();
-    filter.type='lowpass'; filter.frequency.value=400;
-    g.gain.setValueAtTime(0.5,this.ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001,this.ctx.currentTime+0.35);
-    src.connect(filter); filter.connect(g); g.connect(this.masterGain);
-    src.start(); src.stop(this.ctx.currentTime+0.35);
+    filter.type='lowpass';
+    filter.frequency.setValueAtTime(220,t);
+    osc.type='sine';
+    osc.frequency.setValueAtTime(95,t);
+    osc.frequency.exponentialRampToValueAtTime(38,t+0.32);
+    g.gain.setValueAtTime(0.28,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.38);
+    osc.connect(filter); filter.connect(g); g.connect(this.masterGain);
+    osc.start(t); osc.stop(t+0.4);
+    // debris tail
+    this._noiseBurst(0.32,t+0.03,{volume:0.14,highpass:35,lowpass:900,playbackRate:0.8});
   },
 
   nuke(){
     if(!this.ctx||this.muted) return;
     this._resume();
-    // Deep boom
-    const bufSize=this.ctx.sampleRate*0.9;
-    const buf=this.ctx.createBuffer(1,bufSize,this.ctx.sampleRate);
-    const data=buf.getChannelData(0);
-    for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1)*(1-i/bufSize);
-    const src=this.ctx.createBufferSource();
-    src.buffer=buf;
-    const g=this.ctx.createGain();
-    const filter=this.ctx.createBiquadFilter();
-    filter.type='lowpass'; filter.frequency.value=180;
-    g.gain.setValueAtTime(0.8,this.ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001,this.ctx.currentTime+0.9);
-    src.connect(filter); filter.connect(g); g.connect(this.masterGain);
-    src.start();
-    // Sub tone
-    this._tone(40,'sine',1.0,0.4);
+    const t=this.ctx.currentTime;
+    // giant blast layers
+    this._noiseBurst(0.22,t,{volume:0.42,highpass:40,lowpass:2000});
+    this._noiseBurst(0.7,t+0.05,{volume:0.2,highpass:20,lowpass:420,playbackRate:0.72});
+
+    const sub=this.ctx.createOscillator();
+    const subGain=this.ctx.createGain();
+    sub.type='sine';
+    sub.frequency.setValueAtTime(52,t);
+    sub.frequency.exponentialRampToValueAtTime(20,t+1.1);
+    subGain.gain.setValueAtTime(0.5,t);
+    subGain.gain.exponentialRampToValueAtTime(0.0001,t+1.2);
+    sub.connect(subGain); subGain.connect(this.masterGain);
+    sub.start(t); sub.stop(t+1.25);
+
+    const roar=this.ctx.createOscillator();
+    const roarGain=this.ctx.createGain();
+    roar.type='sawtooth';
+    roar.frequency.setValueAtTime(90,t+0.03);
+    roar.frequency.exponentialRampToValueAtTime(32,t+0.65);
+    roarGain.gain.setValueAtTime(0.12,t+0.03);
+    roarGain.gain.exponentialRampToValueAtTime(0.0001,t+0.7);
+    roar.connect(roarGain); roarGain.connect(this.masterGain);
+    roar.start(t+0.03); roar.stop(t+0.75);
   },
 
   pickup(){
@@ -516,22 +638,26 @@ const SFX = {
 
   hit(){
     if(!this.ctx||this.muted) return;
-    this._tone(160,'sawtooth',0.08,0.25);
+    const t=this.ctx.currentTime;
+    this._tone(135,'sawtooth',0.07,0.12,t);
+    this._noiseBurst(0.04,t,{volume:0.045,highpass:500,lowpass:2000});
   },
 
   boost(){
     if(!this.ctx||this.muted) return;
     this._resume();
     const t=this.ctx.currentTime;
+    // nitro whoosh
+    this._noiseBurst(0.28,t,{volume:0.14,highpass:280,lowpass:5200,playbackRate:1.1});
     const osc=this.ctx.createOscillator();
     const g=this.ctx.createGain();
-    osc.type='sine';
-    osc.frequency.setValueAtTime(400,t);
-    osc.frequency.linearRampToValueAtTime(1200,t+0.25);
-    g.gain.setValueAtTime(0.2,t);
-    g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(260,t);
+    osc.frequency.exponentialRampToValueAtTime(1200,t+0.22);
+    g.gain.setValueAtTime(0.12,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.26);
     osc.connect(g); g.connect(this.masterGain);
-    osc.start(t); osc.stop(t+0.25);
+    osc.start(t); osc.stop(t+0.28);
   },
 
   countdownBeep(final){
@@ -554,7 +680,9 @@ const SFX = {
 
   mine(){
     if(!this.ctx||this.muted) return;
-    this._tone(220,'square',0.05,0.15);
+    const t=this.ctx.currentTime;
+    this._tone(190,'square',0.05,0.08,t);
+    this._tone(120,'triangle',0.08,0.05,t+0.01);
   }
 };
 // Init audio on first user interaction
