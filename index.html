@@ -1897,8 +1897,8 @@ function updatePlayer(dt){
   if(jActive){
     const mag=Math.sqrt(jX*jX+jY*jY);
     if(mag>0.12){
-      accel=jY<0?Math.abs(jY)*mag:-Math.abs(jY)*mag;
-      steer=jX*mag*2;
+      accel=jY>0?Math.abs(jY)*mag:-Math.abs(jY)*mag;
+      steer=-jX*mag*2;
     }
   }
 
